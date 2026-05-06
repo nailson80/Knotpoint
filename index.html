@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knotpoint Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #f4f4f4;
+    }
+    .panel {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .box {
+      width: 250px;
+      height: 60px;
+      background: #eee;
+      border: 1px dashed #aaa;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Notice font-size is the base computed style */
+      font-size: 24px;
+    }
+    .box-large {
+      width: 300px;
+      height: 100px;
+      background: #eee;
+      border: 1px dashed #aaa;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    .mock-anchor {
+      width: 50px;
+      height: 50px;
+      background: #2196F3;
+      border-radius: 50%;
+      margin-top: 1rem;
+      transition: transform 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      cursor: pointer;
+    }
+    .container {
+      display: flex;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Knotpoint Toolkit</h1>
+  <button id="btn-debug">Toggle Debug Mode</button>
+  <button id="btn-change-text">Change Text (Mutate)</button>
+  <button id="btn-resize-box">Resize Container</button>
+
+  <div class="panel">
+    <h3>Single Element (Ellipsis Fallback)</h3>
+    <div class="box" data-knotpoint="auto" data-knotpoint-min="10" data-knotpoint-padding="10">
+      Short
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Sync Group</h3>
+    <p>Both elements should share the same minimum font size.</p>
+    <div class="container">
+      <div class="box" data-knotpoint="auto" data-knotpoint-min="12" data-knotpoint-group="nav-buttons">
+        Play
+      </div>
+      <div class="box" data-knotpoint="auto" data-knotpoint-min="12" data-knotpoint-group="nav-buttons" id="sync-target">
+        Multiplayer Options
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Wrap Fallback</h3>
+    <p>This element has min=20px. Once it hits that, it wraps.</p>
+    <div class="box-large" data-knotpoint="auto" data-knotpoint-min="20" data-knotpoint-fallback="wrap" data-knotpoint-padding="8">
+      Some incredibly long word like Donaudampfschifffahrtselektrizitätenhauptbetriebswerkbauunterbeamtengesellschaft.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>AnchorDOM Mock</h3>
+    <p>Changing text triggers Knotpoint size change. The blue circle listens to ResizeObserver on the box and moves over if its width changes.</p>
+    <div class="box" id="anchor-target" data-knotpoint="auto" data-knotpoint-min="14" style="width: auto; max-width: 300px; display: inline-flex;">
+      Dynamic Width Box
+    </div>
+    <div class="mock-anchor" id="anchor-orb">Orb</div>
+  </div>
+
+  <script type="module">
+    import Knotpoint from './src/index.ts';
+
+    // Initialize
+    Knotpoint.init();
+
+    // Debug Toggle
+    let debugOn = false;
+    document.getElementById('btn-debug').addEventListener('click', () => {
+      debugOn = !debugOn;
+      Knotpoint.enableDebug(debugOn);
+    });
+
+    // Mutate Text
+    document.getElementById('btn-change-text').addEventListener('click', () => {
+      const texts = ['Short', 'A bit longer now', 'This text is way too long for its own good!', 'Extremely long localized Russian string for testing'];
+      document.querySelectorAll('.box').forEach(box => {
+        // Skip the specific test ones if we want
+        if (box.id !== 'anchor-target') {
+          box.textContent = texts[Math.floor(Math.random() * texts.length)];
+        }
+      });
+      document.getElementById('anchor-target').textContent = texts[Math.floor(Math.random() * texts.length)];
+    });
+
+    // Resize container
+    document.getElementById('btn-resize-box').addEventListener('click', () => {
+      document.querySelectorAll('.box').forEach(box => {
+        const currentWidth = box.clientWidth;
+        box.style.width = currentWidth === 250 ? '150px' : '250px';
+      });
+    });
+
+    // AnchorDOM Mock
+    const target = document.getElementById('anchor-target');
+    const orb = document.getElementById('anchor-orb');
+
+    const mockAnchorObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Simple mock: Orb translates right by half the box's width
+        const width = entry.contentRect.width;
+        orb.style.transform = `translateX(${width / 2}px)`;
+      }
+    });
+    mockAnchorObserver.observe(target);
+  </script>
+</body>
+</html>
