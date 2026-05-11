@@ -6,6 +6,7 @@ export class KnotpointManager {
 
   private trackedElements: Set<HTMLElement> = new Set();
   private pendingUpdates: Set<HTMLElement> = new Set();
+  private isProcessingElements: Set<HTMLElement> = new Set();
   private isUpdateScheduled: boolean = false;
   private isFontsReady: boolean = false;
 
@@ -67,6 +68,7 @@ export class KnotpointManager {
       if (target && target instanceof HTMLElement) {
         const el = target.closest<HTMLElement>('[data-knotpoint]');
         if (el && this.trackedElements.has(el)) {
+          if (this.isProcessingElements.has(el)) return;
           this.scheduleUpdate(el);
         }
       }
@@ -76,6 +78,7 @@ export class KnotpointManager {
   private handleResizes(entries: ResizeObserverEntry[]) {
     entries.forEach(entry => {
       if (entry.target instanceof HTMLElement && this.trackedElements.has(entry.target)) {
+        if (this.isProcessingElements.has(entry.target)) return;
         this.scheduleUpdate(entry.target);
       }
     });
@@ -134,6 +137,8 @@ export class KnotpointManager {
       this.applyStyles(el, fontSize, isMin);
     });
 
+    const processedGroupElements: HTMLElement[] = [];
+
     // Process groups
     groupsToUpdate.forEach(groupName => {
       // Find all tracked elements in this group
@@ -141,6 +146,8 @@ export class KnotpointManager {
       this.trackedElements.forEach(el => {
         if (getElementConfig(el).group === groupName) {
           groupElements.push(el);
+          this.isProcessingElements.add(el);
+          processedGroupElements.push(el);
         }
       });
 
@@ -164,6 +171,12 @@ export class KnotpointManager {
         this.applyStyles(el, minFontSize, isMin);
       });
     });
+
+    if (processedGroupElements.length > 0) {
+      Promise.resolve().then(() => {
+        processedGroupElements.forEach(el => this.isProcessingElements.delete(el));
+      });
+    }
   }
 
   private applyStyles(el: HTMLElement, fontSize: number, isMin: boolean) {
@@ -171,6 +184,8 @@ export class KnotpointManager {
 
     // Set font size
     el.style.fontSize = `${fontSize}px`;
+
+    const isMinStatus = Math.abs(fontSize - config.min) < 0.1;
 
     // Handle fallbacks if hit min size
     if (isMin) {
@@ -198,12 +213,15 @@ export class KnotpointManager {
         el.style.textOverflow = 'clip';
       }
 
-      const isMax = fontSize === config.max;
-      el.setAttribute('data-knotpoint-status', isMax ? 'max' : 'fit');
+      const isMaxStatus = Math.abs(fontSize - config.max) < 0.1;
+      el.setAttribute('data-knotpoint-status', isMaxStatus ? 'max' : (isMinStatus ? 'min' : 'fit'));
     }
 
     // We set a css variable for the debugger to read
     el.style.setProperty('--kp-font-size', `${fontSize}px`);
+
+    // Dispatch ready event
+    el.dispatchEvent(new CustomEvent('knotpoint:ready', { bubbles: true }));
   }
 
   // Utility for debouncing ResizeObserver callbacks

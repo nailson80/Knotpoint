@@ -23,6 +23,7 @@ export function getElementConfig(el: HTMLElement) {
     fontStyle: compStyles.fontStyle,
     letterSpacing: compStyles.letterSpacing,
     textTransform: compStyles.textTransform,
+    lineHeight: compStyles.lineHeight,
   };
 }
 
@@ -36,8 +37,6 @@ function getGhostElement(): HTMLElement {
     ghostElement.style.pointerEvents = 'none';
     ghostElement.style.top = '-9999px';
     ghostElement.style.left = '-9999px';
-    // Unitless line height for predictable vertical bounding boxes
-    ghostElement.style.lineHeight = '1.2';
     // Remove padding/margin
     ghostElement.style.margin = '0';
     ghostElement.style.padding = '0';
@@ -49,7 +48,7 @@ function getGhostElement(): HTMLElement {
 /**
  * Uses a Ghost DOM element to measure if the text fits within maxW / maxH at given fontSize.
  */
-function doesTextFit(text: string, fontSize: number, config: ReturnType<typeof getElementConfig>, maxW: number, maxH: number): boolean {
+function doesTextFit(text: string, fontSize: number, config: ReturnType<typeof getElementConfig>, maxW: number, maxH: number, isWrap: boolean = false): boolean {
   const ghost = getGhostElement();
 
   // Set styles
@@ -58,12 +57,19 @@ function doesTextFit(text: string, fontSize: number, config: ReturnType<typeof g
   ghost.style.fontStyle = config.fontStyle;
   ghost.style.letterSpacing = config.letterSpacing;
   ghost.style.textTransform = config.textTransform;
+  ghost.style.lineHeight = config.lineHeight;
   ghost.style.fontSize = `${fontSize}px`;
 
   // Stage 1 (Shrink) should always measure text with nowrap so it tries to fit the string on a single line.
   // Word-wrapping should only be applied in Stage 2 if the text hits the min floor.
-  ghost.style.width = 'auto';
-  ghost.style.whiteSpace = 'nowrap';
+  if (isWrap) {
+    ghost.style.width = `${maxW}px`;
+    ghost.style.whiteSpace = 'normal';
+    ghost.style.overflowWrap = 'break-word';
+  } else {
+    ghost.style.width = 'auto';
+    ghost.style.whiteSpace = 'nowrap';
+  }
 
   ghost.textContent = text;
 
@@ -80,7 +86,7 @@ function doesTextFit(text: string, fontSize: number, config: ReturnType<typeof g
 /**
  * Calculates the best font size using Binary Search.
  */
-export function calculateBestFit(el: HTMLElement): { fontSize: number, isMin: boolean } {
+export function calculateBestFit(el: HTMLElement): { fontSize: number, isMin: boolean, isOverflowing?: boolean } {
   const config = getElementConfig(el);
   const text = el.textContent || '';
 
@@ -118,6 +124,16 @@ export function calculateBestFit(el: HTMLElement): { fontSize: number, isMin: bo
   // Ensure we round to nearest 0.5 to avoid weird fractional pixel rendering
   bestFit = Math.floor(bestFit * 2) / 2;
 
+  const isMin = bestFit <= config.min;
+  let isOverflowing = false;
+
+  if (isMin && config.fallback === 'wrap') {
+    // Stage 2 measurement: see if it fits vertically when wrapped
+    if (!doesTextFit(text, bestFit, config, maxW, maxH, true)) {
+      isOverflowing = true;
+    }
+  }
+
   // Return whether we hit the min limit (which triggers fallback)
-  return { fontSize: bestFit, isMin: bestFit <= config.min };
+  return { fontSize: bestFit, isMin, isOverflowing };
 }
