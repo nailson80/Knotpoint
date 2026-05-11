@@ -192,6 +192,8 @@ export class KnotpointManager {
       if (config.fallback === 'wrap') {
         el.style.whiteSpace = 'normal';
         el.style.overflowWrap = 'break-word';
+        el.style.wordBreak = 'break-word';
+        el.style.overflow = 'hidden';
         // Reset text-overflow in case it was previously ellipsis
         el.style.textOverflow = 'clip';
       } else {
@@ -206,11 +208,14 @@ export class KnotpointManager {
       if (config.fallback === 'wrap') {
         el.style.whiteSpace = 'normal';
         el.style.overflowWrap = 'break-word';
+        el.style.wordBreak = 'break-word';
+        el.style.overflow = 'hidden';
         el.style.textOverflow = 'clip';
       } else {
+        // Default to ellipsis (should always apply if ellipsis is the fallback)
         el.style.whiteSpace = 'nowrap';
-        el.style.overflow = 'visible';
-        el.style.textOverflow = 'clip';
+        el.style.overflow = 'hidden';
+        el.style.textOverflow = 'ellipsis';
       }
 
       const isMaxStatus = Math.abs(fontSize - config.max) < 0.1;

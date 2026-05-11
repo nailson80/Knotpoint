@@ -90,10 +90,46 @@ export function calculateBestFit(el: HTMLElement): { fontSize: number, isMin: bo
   const config = getElementConfig(el);
   const text = el.textContent || '';
 
-  // Available dimensions minus padding (applied on both sides so we subtract 2 * padding, or just as a logical reduction?)
-  // Given: "subtract that value from the clientWidth/Height" -> we assume padding reduces total width/height.
-  const maxW = Math.max(0, el.clientWidth - (config.padding * 2));
-  const maxH = Math.max(0, el.clientHeight - (config.padding * 2));
+  const compStyles = window.getComputedStyle(el);
+
+  let elMaxWidth = parseFloat(compStyles.maxWidth);
+  if (isNaN(elMaxWidth)) elMaxWidth = Infinity;
+
+  let elMaxHeight = parseFloat(compStyles.maxHeight);
+  if (isNaN(elMaxHeight)) elMaxHeight = Infinity;
+
+  let baseW = el.clientWidth;
+  let baseH = el.clientHeight;
+
+  // If width is auto, max-content, min-content, fit-content or it's an inline element,
+  // its clientWidth might shrink as we shrink font size.
+  // We should try to determine the maximum available space.
+  const isDynamicWidth = compStyles.width === 'auto' || compStyles.width.includes('content') || compStyles.display.includes('inline');
+  const isDynamicHeight = compStyles.height === 'auto' || compStyles.height.includes('content') || compStyles.display.includes('inline');
+
+  if (isDynamicWidth) {
+    if (elMaxWidth !== Infinity) {
+      baseW = elMaxWidth;
+    } else if (el.parentElement) {
+      const parentStyles = window.getComputedStyle(el.parentElement);
+      const parentPadding = parseFloat(parentStyles.paddingLeft || '0') + parseFloat(parentStyles.paddingRight || '0');
+      baseW = el.parentElement.clientWidth - parentPadding;
+    }
+  }
+
+  if (isDynamicHeight) {
+    if (elMaxHeight !== Infinity) {
+      baseH = elMaxHeight;
+    } else if (el.parentElement) {
+      const parentStyles = window.getComputedStyle(el.parentElement);
+      const parentPadding = parseFloat(parentStyles.paddingTop || '0') + parseFloat(parentStyles.paddingBottom || '0');
+      baseH = el.parentElement.clientHeight - parentPadding;
+    }
+  }
+
+  // Available dimensions minus padding (applied on both sides so we subtract 2 * padding)
+  const maxW = Math.max(0, baseW - (config.padding * 2));
+  const maxH = Math.max(0, baseH - (config.padding * 2));
 
   let low = config.min;
   let high = config.max;

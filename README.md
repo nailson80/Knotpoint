@@ -62,7 +62,7 @@ Configure elements using data attributes:
 | `data-knotpoint-min` | number | `12` | Minimum font size in pixels |
 | `data-knotpoint-max` | number | computed | Maximum font size (defaults to element's computed font size) |
 | `data-knotpoint-padding` | number | `0` | Internal padding to subtract from available space (px) |
-| `data-knotpoint-fallback` | `"ellipsis"` \| `"wrap"` | `"ellipsis"` | Behavior when text hits minimum size |
+| `data-knotpoint-fallback` | `"ellipsis"` \| `"wrap"` | `"ellipsis"` | Behavior when text hits minimum size. Note that for `wrap`, we enforce `word-break: break-word` and `overflow: hidden` to guarantee that long words wrap properly instead of bleeding out. For `ellipsis`, we enforce `overflow: hidden` to ensure truncation cleanly occurs. |
 | `data-knotpoint-group` | string | - | Group name for synchronized sizing across multiple elements |
 
 ### Example with All Options
@@ -199,6 +199,9 @@ Knotpoint works best with:
 - Fixed or explicitly set container dimensions
 - `display: flex` with `align-items: center` for vertical centering
 - Reasonable min/max ranges for smooth visual transitions
+
+### Dynamic Width Elements
+If your element's width is not fixed (for example, `width: auto` or `display: inline-flex`), Knotpoint calculates the available bounds based on its **`max-width`** (if explicitly set) or the **parent element's available width**. This prevents infinite shrinking loops, ensuring that your text maintains proper sizing while growing and shrinking dynamically!
 
 ## 🔧 Development
 
